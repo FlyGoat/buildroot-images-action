@@ -1,0 +1,60 @@
+name: Build Buildroot Images
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config:
+          - mips32r2el_defconfig
+          - mips32r6el_defconfig
+          - mips64r2el_defconfig
+          - mips64r6el_defconfig
+      fail-fast: false
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          libncurses5-dev \
+          git \
+          rsync \
+          unzip \
+          bc \
+          wget \
+          cpio \
+          python3 \
+          python3-setuptools \
+          python-is-python3
+
+    - name: Build ${{ matrix.config }}
+      run: |
+        cd buildroot
+        make defconfig BR2_DEFCONFIG=../configs/${{ matrix.config }}
+        make
+
+    - name: Upload images for ${{ matrix.config }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: images-${{ matrix.config }}
+        path: buildroot/output/images/
+
+
+    - name: Upload host
+      uses: actions/upload-artifact@v4
+      with:
+        name: host-${{ matrix.config }}
+        path: buildroot/output/host/
+
